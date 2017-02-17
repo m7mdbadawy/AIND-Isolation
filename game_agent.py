@@ -13,6 +13,33 @@ class Timeout(Exception):
     """Subclass base exception for code clarity."""
     pass
 
+def mobility_ratio(game,player):
+    """this heuristic uses own_moves/opp_moves
+    """
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    if opp_moves == 0:
+        if own_moves == 0:
+            return float("-inf")
+        else:
+            return float("inf")
+    return float(own_moves/opp_moves)
+
+
+def free_blocks(game,player):
+    """ this heuristic count the number of free locations
+    in 3*3 square whose center is the current player postion
+    """
+    own_loc = game.get_player_location(player)
+    own_blocks = len([(i,j) for (i,j) in game.get_blank_spaces() if abs(i-own_loc[0])<=2 and abs(j-own_loc[1]) <= 2])
+    return own_blocks
+
 
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
@@ -36,16 +63,12 @@ def custom_score(game, player):
     float
         The heuristic value of the current game state to the specified player.
     """
-
     if game.is_loser(player):
         return float("-inf")
 
     if game.is_winner(player):
         return float("inf")
-
-    own_moves = len(game.get_legal_moves(player))
-    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
-    return float(own_moves - opp_moves)
+    return mobility_ratio(game,player) + (free_blocks(game,player)/8)
 
 
 class CustomPlayer:
@@ -184,14 +207,14 @@ class CustomPlayer:
                 to pass the project unit tests; you cannot call any other
                 evaluation function directly.
         """
+        if depth == 0: #base case
+            return self.score(game,game.__player_1__),(-1,-1)
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
         fn = max if maximizing_player else min
         score = float("-inf") if maximizing_player else float("inf")
         mv = (-1,-1)
-        if depth == 0:
-            return self.score(game,game.__player_1__),(-1,-1)
         for  move in game.get_legal_moves():
             ngame = game.forecast_move(move)
             curr_move_score = self.minimax(ngame,depth-1,not maximizing_player)[0]
@@ -241,13 +264,11 @@ class CustomPlayer:
         """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
-
-        # TODO: finish this function!
+        if depth == 0:
+            return self.score(game,game.__player_1__),(-1,-1)
         fn = max if maximizing_player else min
         score = float("-inf") if maximizing_player else float("inf")
         mv = (-1,-1)
-        if depth == 0:
-            return self.score(game,game.__player_1__),(-1,-1)
         for  move in game.get_legal_moves():
             ngame = game.forecast_move(move)
             curr_move_score = self.alphabeta(ngame,depth-1,alpha,beta,not maximizing_player)[0]
